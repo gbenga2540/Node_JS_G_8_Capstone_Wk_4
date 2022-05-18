@@ -82,91 +82,56 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for deleting a user account (checks if the user has a property first)
-router.delete('/deleteuser', verifyJWT, (req, res) => {
-    // id is gotten from the middleware verifyJWT
-    const id = req.userId;
+// endpoint for posting a property advert
+router.post('/property', verifyJWTbody, (req, res) => {
     try {
-        db.query(`SELECT id FROM property WHERE owner=?`, id, (err, response) => {
-            if(err) {
+        // variables received from the front-end. owner is gotten from the middleware verifyJWTbody
+        const owner = req.userId;
+        const status = req.body.status;
+        const price = req.body.price;
+        const state = req.body.state;
+        const city = req.body.city;
+        const address = req.body.address;
+        const type = req.body.type;
+        const imageurl = req.body.imageurl;
+                
+        db.query(`INSERT INTO property (owner, status, price, state, city, address, type, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+        [owner, status, price, state, city, address, type, imageurl], (err, response) => {
+            if(err){
                 res.json({
                     status: "error",
                     data: err,
-                    message: "an error occured while trying to check if user has any property from the database"
-                });
+                    message: "an error occured while trying to insert property data into the database",
+                })
             }else {
-                if (response.length === 0){
-                    try {
-                        // variables received from the front-end.
-                        const email = req.headers["email"];
-                        const password = req.headers["password"];
-                
-                        db.query(`SELECT password from users WHERE email =?`, email, (err, result) => {
-                            if(err) {
-                                res.json({
-                                    status: "error",
-                                    data: err,
-                                    message: "an error occured while checking if the email exists"
-                                });
-                            }else{
-                                if (result.length > 0) {
-                                    bcrypt.compare(password, result[0].password, (err, response) => {
-                                        if (err) {
-                                            res.json({
-                                                status: "error",
-                                                data: err,
-                                                message: "an error occured while checking the password"
-                                            });
-                                        }else {
-                                            if (response) {
-                                                db.query(`DELETE FROM users WHERE email=?`, email, (err, result) => {
-                                                    if (err) {
-                                                        res.json({
-                                                            status: "error",
-                                                            data: err,
-                                                            message: "an error occured while trying to delete user"
-                                                        });
-                                                    }else {
-                                                        res.json({
-                                                            status: "success",
-                                                            data: result,
-                                                            message: "user account deleted successfully"
-                                                        });
-                                                    }
-                                                });
-                                            }else {
-                                                res.json({
-                                                    status: "error",
-                                                    message: "password is incorrect"
-                                                });
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                        });
-                    } catch (err) {
-                        res.json({
-                            status: "error",
-                            data: err,
-                            message: "an error occured while trying to delete user"
-                        });
-                    }
-                }else {
-                    res.json({
-                        status: "error",
-                        message: "cannot delete user with property(ies)"
-                    });
-                }
+
+                const date = new Date;
+                const date_time = `${date.getFullYear()}-${date.getMonth() < 10 + 1 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1}-${date.getDate() < 10 ? "0" + date.getDate() : date.getDate()}T${date.getHours() < 10 ? "0" + date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()}:${date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds()}.000Z`;
+
+                res.json({
+                    status: "success",
+                    data: {
+                        id: response.insertId,
+                        status: status,
+                        type: type,
+                        state: state,
+                        city: city,
+                        address: address,
+                        price: price,
+                        created_on: date_time,
+                        image_url: imageurl
+                    }, 
+                    message: "property added successfully",
+                });
             }
         });
-    }catch (error) {
+    } catch (err) {
         res.json({
             status: "error",
             data: err,
-            message: "an error occured while trying to check if user has any property"
+            message: "an error occured while trying to post property",
         });
-    }
+    }   
 });
 
 
