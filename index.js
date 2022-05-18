@@ -82,10 +82,11 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for posting a property advert
-router.post('/property', verifyJWTbody, (req, res) => {
+// endpoint for updating a property using id
+router.patch('/property/:id', verifyJWTbody, (req, res) => {
     try {
         // variables received from the front-end. owner is gotten from the middleware verifyJWTbody
+        const id = req.params.id;
         const owner = req.userId;
         const status = req.body.status;
         const price = req.body.price;
@@ -94,42 +95,67 @@ router.post('/property', verifyJWTbody, (req, res) => {
         const address = req.body.address;
         const type = req.body.type;
         const imageurl = req.body.imageurl;
-                
-        db.query(`INSERT INTO property (owner, status, price, state, city, address, type, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-        [owner, status, price, state, city, address, type, imageurl], (err, response) => {
-            if(err){
+
+        db.query(`SELECT owner FROM property WHERE id=?`, id, (err, result) => {
+            if (err) {
                 res.json({
                     status: "error",
                     data: err,
-                    message: "an error occured while trying to insert property data into the database",
-                })
-            }else {
-
-                const date = new Date;
-                const date_time = `${date.getFullYear()}-${date.getMonth() < 10 + 1 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1}-${date.getDate() < 10 ? "0" + date.getDate() : date.getDate()}T${date.getHours() < 10 ? "0" + date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()}:${date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds()}.000Z`;
-
-                res.json({
-                    status: "success",
-                    data: {
-                        id: response.insertId,
-                        status: status,
-                        type: type,
-                        state: state,
-                        city: city,
-                        address: address,
-                        price: price,
-                        created_on: date_time,
-                        image_url: imageurl
-                    }, 
-                    message: "property added successfully",
+                    message: "an error occured while trying to verify userID from the database",
                 });
+            }else {
+                if (owner === result[0].owner) {
+                    try {
+                        db.query(`UPDATE property SET status=?, price=?, city=?, address=?, type=?, image_url=?, state=? WHERE id=?`, 
+                        [status, price, city, address, type, imageurl, state, id], (err, response) => {
+                            if(err){
+                                res.json({
+                                    status: "error",
+                                    data: err,
+                                    message: "an error occured while trying to update property data",
+                                });
+                            }else {
+                                const date = new Date;
+                                const date_time = `${date.getFullYear()}-${date.getMonth() < 10 + 1 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1}-${date.getDate() < 10 ? "0" + date.getDate() : date.getDate()}T${date.getHours() < 10 ? "0" + date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()}:${date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds()}.000Z`;
+                
+                                res.json({
+                                    status: "success",
+                                    data: {
+                                        id: id,
+                                        status: status,
+                                        type: type,
+                                        state: state,
+                                        city: city,
+                                        address: address,
+                                        price: price,
+                                        created_on: date_time,
+                                        image_url: imageurl
+                                    }, 
+                                    message: "property updated successfully",
+                                    additionalInfo: response.affectedRows + " row updated"
+                                });
+                            }
+                        });
+                    }catch (error) {
+                        res.json({
+                            status: "error",
+                            data: err,
+                            message: "an error occured while trying to update property",
+                        });
+                    }                  
+                }else {
+                    res.json({
+                        status: "error",
+                        message: "an error occured while trying to verify user of this property",
+                    });
+                }
             }
         });
     } catch (err) {
         res.json({
             status: "error",
             data: err,
-            message: "an error occured while trying to post property",
+            message: "an error occured while trying to update property",
         });
     }   
 });
