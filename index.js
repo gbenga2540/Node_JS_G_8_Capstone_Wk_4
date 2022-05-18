@@ -82,31 +82,39 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for searching for a property by type
-router.get('/property/search', verifyJWT, (req, res) => {
+// endpoint for fetching a property with a particular id
+router.get('/property/:id', verifyJWT, (req, res) => {
     // variables received from the front-end.
-    const type = req.query.type;
+    const id = req.params.id;
     try {
-        db.query(`SELECT * FROM property WHERE type=?`, type, (err, result) => {
+        db.query(`SELECT * FROM property WHERE id=?`, id, (err, result) => {
             if (err) {
                 res.json({
                     status: "error",
                     data: err,
-                    message: `an error occured while trying to fetch property(ies) with type: ${type} from the database`,
+                    message: "an error occured while trying to verify property id from the database",
                 });
             }else {
                 if (result.length > 0) {
                     res.json({
                         status: "success",
-                        data: [
-                            ...result
-                        ], 
+                        data: {
+                            id: id,
+                            status: result[0].status,
+                            type: result[0].type,
+                            state: result[0].state,
+                            city: result[0].city,
+                            address: result[0].address,
+                            price: result[0].price,
+                            created_on: result[0].created_on,
+                            image_url: result[0].image_url
+                        }, 
                         message: "property request successfully"
                     });                  
                 }else {
                     res.json({
                         status: "error",
-                        message: `property(ies) with type: ${type} does not exist in the database`,
+                        message: `property with id: ${id} does not exist in the database`,
                     });
                 }
             }
@@ -115,7 +123,7 @@ router.get('/property/search', verifyJWT, (req, res) => {
         res.json({
             status: "error",
             data: err,
-            message: `an error occured while trying to fetch property(ies) with type: ${type}`,
+            message: `an error occured while trying to get property with id: ${id}`,
         });
     }   
 });
