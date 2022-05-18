@@ -82,39 +82,29 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for fetching a property with a particular id
-router.get('/property/:id', verifyJWT, (req, res) => {
-    // variables received from the front-end.
-    const id = req.params.id;
+// endpoint for fetching all the properties in the database
+router.get('/property', verifyJWT, (req, res) => {
     try {
-        db.query(`SELECT * FROM property WHERE id=?`, id, (err, result) => {
+        db.query(`SELECT * FROM property`, (err, result) => {
             if (err) {
                 res.json({
                     status: "error",
                     data: err,
-                    message: "an error occured while trying to verify property id from the database",
+                    message: "an error occured while trying to get all properties data from the database",
                 });
             }else {
                 if (result.length > 0) {
                     res.json({
                         status: "success",
-                        data: {
-                            id: id,
-                            status: result[0].status,
-                            type: result[0].type,
-                            state: result[0].state,
-                            city: result[0].city,
-                            address: result[0].address,
-                            price: result[0].price,
-                            created_on: result[0].created_on,
-                            image_url: result[0].image_url
-                        }, 
+                        data: [
+                            ...result
+                        ], 
                         message: "property request successfully"
-                    });                  
+                    });                
                 }else {
                     res.json({
                         status: "error",
-                        message: `property with id: ${id} does not exist in the database`,
+                        message: `there are no properties in the database`,
                     });
                 }
             }
@@ -123,7 +113,7 @@ router.get('/property/:id', verifyJWT, (req, res) => {
         res.json({
             status: "error",
             data: err,
-            message: `an error occured while trying to get property with id: ${id}`,
+            message: `an error occured while trying to get all properties`,
         });
     }   
 });
