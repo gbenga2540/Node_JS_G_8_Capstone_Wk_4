@@ -82,14 +82,12 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for marking a property as sold
-router.patch('/property/:id/sold', verifyJWTbody, (req, res) => {
+// endpoint for deleting a property
+router.delete('/property/:id', verifyJWT, (req, res) => {
     try {
-        // variables received from the front-end. owner is gotten from the middleware verifyJWTbody
+        // variables received from the front-end. owner is gotten from the middleware verifyJWT
         const id = req.params.id;
         const owner = req.userId;
-
-        const status = req.body.status;
 
         db.query(`SELECT * FROM property WHERE id=?`, id, (err, result) => {
             if (err) {
@@ -101,19 +99,19 @@ router.patch('/property/:id/sold', verifyJWTbody, (req, res) => {
             }else {
                 if (owner === result[0].owner) {
                     try {
-                        db.query(`UPDATE property SET status=? WHERE id=?`, [status, id], (err, response) => {
+                        db.query(`DELETE FROM property WHERE id=?`, id, (err, response) => {
                             if(err){
                                 res.json({
                                     status: "error",
                                     data: err,
-                                    message: "an error occured while trying to update property data to sold",
+                                    message: "an error occured while trying to delete property",
                                 });
                             }else {
                                 res.json({
                                     status: "success",
                                     data: {
                                         id: id,
-                                        status: status,
+                                        status: result[0].status,
                                         type: result[0].type,
                                         state: result[0].state,
                                         city: result[0].city,
@@ -122,7 +120,7 @@ router.patch('/property/:id/sold', verifyJWTbody, (req, res) => {
                                         created_on: result[0].created_on,
                                         image_url: result[0].image_url
                                     }, 
-                                    message: "property set to sold successfully",
+                                    message: "property deleted successfully",
                                     additionalInfo: response.affectedRows + " row updated"
                                 });
                             }
@@ -131,7 +129,7 @@ router.patch('/property/:id/sold', verifyJWTbody, (req, res) => {
                         res.json({
                             status: "error",
                             data: err,
-                            message: "an error occured while trying to update property to sold",
+                            message: "an error occured while trying to delete property",
                         });
                     }                  
                 }else {
@@ -146,7 +144,7 @@ router.patch('/property/:id/sold', verifyJWTbody, (req, res) => {
         res.json({
             status: "error",
             data: err,
-            message: "an error occured while trying to update property",
+            message: "an error occured while trying to delete property",
         });
     }   
 });
