@@ -82,75 +82,89 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for changing a user password 
-router.patch('/resetpassword', verifyJWTbody, (req, res) => {
+// endpoint for deleting a user account (checks if the user has a property first)
+router.delete('/deleteuser', verifyJWT, (req, res) => {
+    // id is gotten from the middleware verifyJWT
     const id = req.userId;
     try {
-        const password = req.body.password;
-        const newpassword = req.body.newpassword;
-        db.query(`SELECT password FROM users WHERE id=?`, id, (err, response) => {
-            if (err) {
+        db.query(`SELECT id FROM property WHERE owner=?`, id, (err, response) => {
+            if(err) {
                 res.json({
                     status: "error",
                     data: err,
-                    message: "error trying to verify userID"
+                    message: "an error occured while trying to check if user has any property from the database"
                 });
             }else {
-                bcrypt.compare(password, response[0].password, async (err, result) => {
-                    if (err) {
+                if (response.length === 0){
+                    try {
+                        // variables received from the front-end.
+                        const email = req.headers["email"];
+                        const password = req.headers["password"];
+                
+                        db.query(`SELECT password from users WHERE email =?`, email, (err, result) => {
+                            if(err) {
+                                res.json({
+                                    status: "error",
+                                    data: err,
+                                    message: "an error occured while checking if the email exists"
+                                });
+                            }else{
+                                if (result.length > 0) {
+                                    bcrypt.compare(password, result[0].password, (err, response) => {
+                                        if (err) {
+                                            res.json({
+                                                status: "error",
+                                                data: err,
+                                                message: "an error occured while checking the password"
+                                            });
+                                        }else {
+                                            if (response) {
+                                                db.query(`DELETE FROM users WHERE email=?`, email, (err, result) => {
+                                                    if (err) {
+                                                        res.json({
+                                                            status: "error",
+                                                            data: err,
+                                                            message: "an error occured while trying to delete user"
+                                                        });
+                                                    }else {
+                                                        res.json({
+                                                            status: "success",
+                                                            data: result,
+                                                            message: "user account deleted successfully"
+                                                        });
+                                                    }
+                                                });
+                                            }else {
+                                                res.json({
+                                                    status: "error",
+                                                    message: "password is incorrect"
+                                                });
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    } catch (err) {
                         res.json({
                             status: "error",
                             data: err,
-                            message: "an error occured while checking the password"
+                            message: "an error occured while trying to delete user"
                         });
-                    }else {
-                        if (result) {
-                            const salt = await bcrypt.genSalt(10);
-                            const hashedPassword = await bcrypt.hash(newpassword, salt);
-                            try {
-                                db.query(`UPDATE users SET password=? WHERE id=?`, [hashedPassword, id], (err, response) => {
-                                    if (err) {
-                                        res.json({
-                                            status: "error",
-                                            data: err,
-                                            message: "an error occured while trying to update the password"
-                                        });
-                                    }else {
-                                        if (response.affectedRows === 1){
-                                            res.json({
-                                                status: "success",
-                                                message: "password updated successfully"
-                                            });
-                                        }else {
-                                            res.json({
-                                                status: "error",
-                                                message: "failed to update the password"
-                                            });
-                                        }
-                                    }
-                                });
-                            }catch (error) {
-                                res.json({
-                                    status: "error",
-                                    data: error,
-                                    message: "error trying update password"
-                                });
-                            }
-                        }else {
-                            res.json({
-                                status: "error",
-                                message: "incorrect password"
-                            });
-                        }
                     }
-                });
+                }else {
+                    res.json({
+                        status: "error",
+                        message: "cannot delete user with property(ies)"
+                    });
+                }
             }
         });
     }catch (error) {
         res.json({
             status: "error",
-            data: error,
-            message: "an error occured while trying to reset password"
+            data: err,
+            message: "an error occured while trying to check if user has any property"
         });
     }
 });
