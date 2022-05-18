@@ -82,46 +82,73 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for reporting a property as fraudulent
-router.post('/property/:id/report', verifyJWTbody, (req, res) => {
+// endpoint for marking a property as sold
+router.patch('/property/:id/sold', verifyJWTbody, (req, res) => {
     try {
         // variables received from the front-end. owner is gotten from the middleware verifyJWTbody
-        const pid = req.params.id;
-        const reason = req.body.reason;
-        const description = req.body.description;
-                
-        db.query(`INSERT INTO reports (property_id, reason, description) VALUES (?, ?, ?)`, 
-        [pid, reason, description], (err, response) => {
-            if(err){
+        const id = req.params.id;
+        const owner = req.userId;
+
+        const status = req.body.status;
+
+        db.query(`SELECT * FROM property WHERE id=?`, id, (err, result) => {
+            if (err) {
                 res.json({
                     status: "error",
                     data: err,
-                    message: "an error occured while trying to insert report into the database",
-                })
-            }else {
-                const date = new Date;
-                const date_time = `${date.getFullYear()}-${date.getMonth() < 10 + 1 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1}-${date.getDate() < 10 ? "0" + date.getDate() : date.getDate()}T${date.getHours() < 10 ? "0" + date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()}:${date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds()}.000Z`;
-
-                res.json({
-                    status: "success",
-                    data: {
-                        id: response.insertId,
-                        property_id: pid,
-                        reason: reason,
-                        description: description,
-                        created_on: date_time,
-                    }, 
-                    message: "report added successfully",
+                    message: "an error occured while trying to verify userID from the database",
                 });
+            }else {
+                if (owner === result[0].owner) {
+                    try {
+                        db.query(`UPDATE property SET status=? WHERE id=?`, [status, id], (err, response) => {
+                            if(err){
+                                res.json({
+                                    status: "error",
+                                    data: err,
+                                    message: "an error occured while trying to update property data to sold",
+                                });
+                            }else {
+                                res.json({
+                                    status: "success",
+                                    data: {
+                                        id: id,
+                                        status: status,
+                                        type: result[0].type,
+                                        state: result[0].state,
+                                        city: result[0].city,
+                                        address: result[0].address,
+                                        price: result[0].price,
+                                        created_on: result[0].created_on,
+                                        image_url: result[0].image_url
+                                    }, 
+                                    message: "property set to sold successfully",
+                                    additionalInfo: response.affectedRows + " row updated"
+                                });
+                            }
+                        });
+                    }catch (error) {
+                        res.json({
+                            status: "error",
+                            data: err,
+                            message: "an error occured while trying to update property to sold",
+                        });
+                    }                  
+                }else {
+                    res.json({
+                        status: "error",
+                        message: "an error occured while trying to verify user of this property",
+                    });
+                }
             }
         });
-    }catch(err) {
+    } catch (err) {
         res.json({
             status: "error",
             data: err,
-            message: `an error occured while trying to report property`,
+            message: "an error occured while trying to update property",
         });
-    }
+    }   
 });
 
 
