@@ -82,60 +82,31 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for deleting a property
-router.delete('/property/:id', verifyJWT, (req, res) => {
+// endpoint for searching for a property by type
+router.get('/property/search', verifyJWT, (req, res) => {
+    // variables received from the front-end.
+    const type = req.query.type;
     try {
-        // variables received from the front-end. owner is gotten from the middleware verifyJWT
-        const id = req.params.id;
-        const owner = req.userId;
-
-        db.query(`SELECT * FROM property WHERE id=?`, id, (err, result) => {
+        db.query(`SELECT * FROM property WHERE type=?`, type, (err, result) => {
             if (err) {
                 res.json({
                     status: "error",
                     data: err,
-                    message: "an error occured while trying to verify userID from the database",
+                    message: `an error occured while trying to fetch property(ies) with type: ${type} from the database`,
                 });
             }else {
-                if (owner === result[0].owner) {
-                    try {
-                        db.query(`DELETE FROM property WHERE id=?`, id, (err, response) => {
-                            if(err){
-                                res.json({
-                                    status: "error",
-                                    data: err,
-                                    message: "an error occured while trying to delete property",
-                                });
-                            }else {
-                                res.json({
-                                    status: "success",
-                                    data: {
-                                        id: id,
-                                        status: result[0].status,
-                                        type: result[0].type,
-                                        state: result[0].state,
-                                        city: result[0].city,
-                                        address: result[0].address,
-                                        price: result[0].price,
-                                        created_on: result[0].created_on,
-                                        image_url: result[0].image_url
-                                    }, 
-                                    message: "property deleted successfully",
-                                    additionalInfo: response.affectedRows + " row updated"
-                                });
-                            }
-                        });
-                    }catch (error) {
-                        res.json({
-                            status: "error",
-                            data: err,
-                            message: "an error occured while trying to delete property",
-                        });
-                    }                  
+                if (result.length > 0) {
+                    res.json({
+                        status: "success",
+                        data: [
+                            ...result
+                        ], 
+                        message: "property request successfully"
+                    });                  
                 }else {
                     res.json({
                         status: "error",
-                        message: "an error occured while trying to verify user of this property",
+                        message: `property(ies) with type: ${type} does not exist in the database`,
                     });
                 }
             }
@@ -144,7 +115,7 @@ router.delete('/property/:id', verifyJWT, (req, res) => {
         res.json({
             status: "error",
             data: err,
-            message: "an error occured while trying to delete property",
+            message: `an error occured while trying to fetch property(ies) with type: ${type}`,
         });
     }   
 });
