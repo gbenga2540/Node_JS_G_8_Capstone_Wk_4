@@ -14,71 +14,143 @@ app.use(cors());
 
 
 
-// endpoint for logging in a user
-router.post('/auth/signin', (req, res) => {
-    try {
-        // variables received from the front-end.
-        const email = req.body.email;
-        const password = req.body.password;
+// Verifies the generated token from the front-end [token stored in header request due to GET Request] to get the user id. example:
+// {
+//     status: "available",
+//     price: 4429.99,
+//     headers: {
+//       "x-access-token": sessionStorage.getItem("apextoken")
+//     }
+// }
+const verifyJWT = (req, res, next) => {
+    const token = req.headers["x-access-token"];
 
-        db.query(`SELECT id, first_name, last_name, email, password FROM users WHERE (email = ?)`, email, (err, result) => {
+    if (token) {
+        jwt.verify(token, process.env.NODE_AUTH_SECRET, (err, decoded) => {
+            if (err) {
+                res.json({
+                    status: "error",
+                    message: "failed to authenticate",
+                    auth: false
+                });
+            }else {
+                req.userId = decoded.uid;
+                next();
+            }
+        });
+    }else {
+        res.json({
+            status: "error",
+            message: "token was not received",
+            auth: false
+        })
+    }
+}
+
+// Verifies the generated token from the front-end [token stored in body request due to POST request] to get the user id. example:
+// {
+//     status: "available",
+//     price: 4429.99,
+//     headers: {
+//       "x-access-token": sessionStorage.getItem("apextoken")
+//     }
+// }
+const verifyJWTbody = (req, res, next) => {
+    const token = req.body.headers["x-access-token"];
+
+    if (token) {
+        jwt.verify(token, process.env.NODE_AUTH_SECRET, (err, decoded) => {
+            if (err) {
+                res.json({
+                    status: "error",
+                    message: "failed to authenticate",
+                    auth: false
+                });
+            }else {
+                req.userId = decoded.uid;
+                next();
+            }
+        });
+    }else {
+        res.json({
+            status: "error",
+            message: "token was not received",
+            auth: false
+        })
+    }
+}
+
+
+
+// endpoint for changing a user password 
+router.patch('/resetpassword', verifyJWTbody, (req, res) => {
+    const id = req.userId;
+    try {
+        const password = req.body.password;
+        const newpassword = req.body.newpassword;
+        db.query(`SELECT password FROM users WHERE id=?`, id, (err, response) => {
             if (err) {
                 res.json({
                     status: "error",
                     data: err,
-                    message: "an error occured while checking for the email in the database"
+                    message: "error trying to verify userID"
                 });
             }else {
-                if (result.length > 0) {
-                    bcrypt.compare(password, result[0].password, (error, response) => {
-                        if (error) {
-                            res.json({
-                                status: "error",
-                                data: error,
-                                message: "an error occured while checking the password",
-                                auth: false
-                            });
-                        }else {
-                            if (response) {
-                                const uid = result[0].id;
-                                const token = jwt.sign({uid}, process.env.NODE_AUTH_SECRET, {
-                                    expiresIn: 1800,
+                bcrypt.compare(password, response[0].password, async (err, result) => {
+                    if (err) {
+                        res.json({
+                            status: "error",
+                            data: err,
+                            message: "an error occured while checking the password"
+                        });
+                    }else {
+                        if (result) {
+                            const salt = await bcrypt.genSalt(10);
+                            const hashedPassword = await bcrypt.hash(newpassword, salt);
+                            try {
+                                db.query(`UPDATE users SET password=? WHERE id=?`, [hashedPassword, id], (err, response) => {
+                                    if (err) {
+                                        res.json({
+                                            status: "error",
+                                            data: err,
+                                            message: "an error occured while trying to update the password"
+                                        });
+                                    }else {
+                                        if (response.affectedRows === 1){
+                                            res.json({
+                                                status: "success",
+                                                message: "password updated successfully"
+                                            });
+                                        }else {
+                                            res.json({
+                                                status: "error",
+                                                message: "failed to update the password"
+                                            });
+                                        }
+                                    }
                                 });
-                                res.json({
-                                    status: "success",
-                                    data: {
-                                        token: token,
-                                        first_name: result[0].first_name,
-                                        last_name: result[0].last_name,
-                                        email: result[0].email
-                                    },
-                                    message: "logged in successfully",
-                                    auth: true
-                                });
-                            }else {
+                            }catch (error) {
                                 res.json({
                                     status: "error",
-                                    message: "password is incorrect",
-                                    auth: false
+                                    data: error,
+                                    message: "error trying update password"
                                 });
                             }
-                        }    
-                    });
-                }else {
-                    res.json({
-                        status: "error",
-                        message: "username does not exist",
-                        auth: false
-                    });
-                }
-            }   
+                        }else {
+                            res.json({
+                                status: "error",
+                                message: "incorrect password"
+                            });
+                        }
+                    }
+                });
+            }
         });
-    } catch (err) {
+    }catch (error) {
         res.json({
             status: "error",
-            data: err,
-            message: "an error occured while trying to login",
-            auth: false
+            data: error,
+            message: "an error occured while trying to reset password"
         });
     }
 });
