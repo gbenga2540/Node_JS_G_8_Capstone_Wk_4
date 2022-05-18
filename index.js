@@ -82,82 +82,46 @@ const verifyJWTbody = (req, res, next) => {
 
 
 
-// endpoint for updating a property using id
-router.patch('/property/:id', verifyJWTbody, (req, res) => {
+// endpoint for reporting a property as fraudulent
+router.post('/property/:id/report', verifyJWTbody, (req, res) => {
     try {
         // variables received from the front-end. owner is gotten from the middleware verifyJWTbody
-        const id = req.params.id;
-        const owner = req.userId;
-        const status = req.body.status;
-        const price = req.body.price;
-        const state = req.body.state;
-        const city = req.body.city;
-        const address = req.body.address;
-        const type = req.body.type;
-        const imageurl = req.body.imageurl;
-
-        db.query(`SELECT owner FROM property WHERE id=?`, id, (err, result) => {
-            if (err) {
+        const pid = req.params.id;
+        const reason = req.body.reason;
+        const description = req.body.description;
+                
+        db.query(`INSERT INTO reports (property_id, reason, description) VALUES (?, ?, ?)`, 
+        [pid, reason, description], (err, response) => {
+            if(err){
                 res.json({
                     status: "error",
                     data: err,
-                    message: "an error occured while trying to verify userID from the database",
-                });
+                    message: "an error occured while trying to insert report into the database",
+                })
             }else {
-                if (owner === result[0].owner) {
-                    try {
-                        db.query(`UPDATE property SET status=?, price=?, city=?, address=?, type=?, image_url=?, state=? WHERE id=?`, 
-                        [status, price, city, address, type, imageurl, state, id], (err, response) => {
-                            if(err){
-                                res.json({
-                                    status: "error",
-                                    data: err,
-                                    message: "an error occured while trying to update property data",
-                                });
-                            }else {
-                                const date = new Date;
-                                const date_time = `${date.getFullYear()}-${date.getMonth() < 10 + 1 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1}-${date.getDate() < 10 ? "0" + date.getDate() : date.getDate()}T${date.getHours() < 10 ? "0" + date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()}:${date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds()}.000Z`;
-                
-                                res.json({
-                                    status: "success",
-                                    data: {
-                                        id: id,
-                                        status: status,
-                                        type: type,
-                                        state: state,
-                                        city: city,
-                                        address: address,
-                                        price: price,
-                                        created_on: date_time,
-                                        image_url: imageurl
-                                    }, 
-                                    message: "property updated successfully",
-                                    additionalInfo: response.affectedRows + " row updated"
-                                });
-                            }
-                        });
-                    }catch (error) {
-                        res.json({
-                            status: "error",
-                            data: err,
-                            message: "an error occured while trying to update property",
-                        });
-                    }                  
-                }else {
-                    res.json({
-                        status: "error",
-                        message: "an error occured while trying to verify user of this property",
-                    });
-                }
+                const date = new Date;
+                const date_time = `${date.getFullYear()}-${date.getMonth() < 10 + 1 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1}-${date.getDate() < 10 ? "0" + date.getDate() : date.getDate()}T${date.getHours() < 10 ? "0" + date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()}:${date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds()}.000Z`;
+
+                res.json({
+                    status: "success",
+                    data: {
+                        id: response.insertId,
+                        property_id: pid,
+                        reason: reason,
+                        description: description,
+                        created_on: date_time,
+                    }, 
+                    message: "report added successfully",
+                });
             }
         });
-    } catch (err) {
+    }catch(err) {
         res.json({
             status: "error",
             data: err,
-            message: "an error occured while trying to update property",
+            message: `an error occured while trying to report property`,
         });
-    }   
+    }
 });
 
 
