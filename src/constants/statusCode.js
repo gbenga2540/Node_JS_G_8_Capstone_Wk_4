@@ -1,0 +1,19 @@
+const OK = 200;
+const CREATED = 201;
+const UNAUTHORIZED = 401;
+const NOT_FOUND = 404;
+const FORBIDDEN = 403;
+const BAD_REQUEST = 400;
+const CONFLICT = 409;
+const SERVER_ERROR = 500;
+
+module.exports = {
+  OK,
+  CREATED,
+  UNAUTHORIZED,
+  NOT_FOUND,
+  FORBIDDEN,
+  BAD_REQUEST,
+  CONFLICT,
+  SERVER_ERROR,
+};

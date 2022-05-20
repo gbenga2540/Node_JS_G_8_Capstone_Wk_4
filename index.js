@@ -1,70 +1,38 @@
-const express = require('express');
-const router = require('express').Router();
-const cors = require('cors');
-const db = require('./src/db.config');
-const PORT = 3005;
+const express = require("express");
+const router = require("express").Router();
+const cors = require("cors");
+const morgan = require("morgan");
+const db = require("./src/config/db.config");
+const PORT = process.env.PORT || 3005;
 const app = express();
+const authRoutes = require("./src/routes/auth.routes");
+const userRoutes = require("./src/routes/user.routes.js");
+const propertyRoutes = require("./src/routes/property.routes");
+const { httpLogStream } = require("./src/utils/logger");
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+app.use(morgan("dev"));
+app.use(morgan("combined", { stream: httpLogStream }));
 
-router.post('/register', (req, res) => {
-    const email = req.body.email;
-    const firstname = req.body.firstname;
-    const lastname = req.body.lastname;
-    const password = req.body.password;
-    const phone = req.body.phone;
-    const address = req.body.address;
-    const isadmin = req.body.isadmin;
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/property", propertyRoutes);
 
-    db.query(`SELECT first_name FROM Users WHERE (email = ?)`, [email], (err, result) => {
-        if (err) throw err;
-        if(!result.length){
-            db.query("INSERT INTO Users (email, first_name, last_name, password, phone, address, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-            [email, firstname, lastname, password, phone, address, isadmin], 
-            (err, result) => {
-                console.log(err);
-                res.send(result);
-            }) 
-        }else {
-            res.send('This account already exists!!!');
-        }
-    });   
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to SideHustle Node REST API with express." });
 });
 
-router.post('/login', (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password;
-
-    db.query(`SELECT first_name FROM Users WHERE (email = ? && password = ?)`, [email, password], (err, result) => {
-        if (err) throw err;
-        res.send(result);
-        console.log(result)
-    });
+// error handler
+app.use((err, req, res, next) => {
+  res.status(err.statusCode || 500).json({
+    status: "error",
+    error: err.message,
+  });
+  next();
 });
-
-router.post('/deleteuser', (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password;
-
-    db.query(`DELETE FROM Users WHERE (email = ? && password = ?)`, [email, password], (err, result) => {
-        if (err) throw err;
-        res.send({
-            message: result,
-            info: "Account deleted successfully!!!"
-        });
-        console.log(result)
-    });
-});
-
-router.get('/users', (req, res) => {
-    db.query("SELECT * FROM Users", (err, result) => {
-        if (err) throw err;
-        res.send(result)
-    });
-});
-
-app.use('/api/v1', router);
 
 app.listen(PORT, () => {
-    console.log('Server is online!!!');
+  console.log("Server is online!!!");
 });
