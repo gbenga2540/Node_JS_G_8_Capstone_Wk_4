@@ -6,11 +6,10 @@ const connection = mysql.createConnection({
     user: process.env.NODE_DB_USER,
     password: process.env.NODE_DB_PASSWORD,
     database: process.env.NODE_DB_DATABASE
-})
-
+});
 connection.connect((err) => {
-    if(err) throw err;
-    console.log('SQL Database Connected!!!');  
-})
+    if (err) throw err;
+    console.log('SQL Database Connected!!!');
+});
 
 module.exports = connection;
