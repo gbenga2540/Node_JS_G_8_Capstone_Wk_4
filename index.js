@@ -7,7 +7,6 @@ require('dotenv').config();
 const db = require('./src/db.config');
 const app = express();
 const { cloudinary } = require('./utils/cloudinary');
-const { response } = require('express');
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
